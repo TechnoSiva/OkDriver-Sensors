@@ -1,74 +1,271 @@
-# OkDriver Sensors
+# OkDriver Sensors - Android Kotlin Assignment
 
-## What This App Does
-OkDriver Sensors is an Android (Kotlin, XML Views) telemetry app that monitors device sensors and GPS during a driving session.
+Android application that collects real-time motion and location data from a mobile device and analyzes driving behavior using device sensors.
 
-- Dashboard: live accelerometer, gyroscope, magnetometer, and GPS values with monitoring controls.
-- Events: real-time detection log for `HARSH_ACCEL`, `HARSH_BRAKE`, and `SHARP_TURN`.
-- Battery: session baseline and automatic 30-minute drain report (start/end battery, timestamps, drain percent).
+The app streams sensor data, detects driving events such as harsh acceleration or sharp turns, and evaluates battery consumption during monitoring while applying runtime battery optimizations.
 
-## Architecture Overview
-The app follows a lightweight MVVM + Flow architecture.
+---
 
-- `data/`
-  - `sensors/`: `AndroidSensorDataSource` streams sensor snapshots and supports runtime sampling modes.
-  - `location/`: `AndroidLocationDataSource` streams GPS snapshots and supports adaptive location intervals.
-  - `battery/`: battery percent provider.
-  - `events/`: in-memory shared `EventsRepository`.
-  - `monitoring/`: shared `MonitoringSessionRepository`.
-  - `model/`: app data models (`SensorSnapshot`, `LocationSnapshot`, `DrivingEvent`, `MonitoringSession`).
-- `domain/`
-  - `DrivingEventDetector`: event detection logic + debounce + severity.
-  - `MotionStateEvaluator`: stationary/moving heuristic using speed + acceleration window.
-  - `ThresholdConfig`: centralized thresholds and timing constants.
-- `ui/`
-  - `dashboard/`: monitoring control, live telemetry, optimization state.
-  - `events/`: RecyclerView rendering shared event stream and clear action.
-  - `battery/`: battery report and monitoring session status.
-- `util/`
-  - formatting helpers.
+## Application Overview
 
-### Data Flow
-- Sensor and location data sources emit `Flow`.
-- `DashboardViewModel` consumes snapshots, updates UI state, runs event detection, and applies optimization mode transitions.
-- Events are published to `EventsRepository` and observed by `EventsViewModel`.
-- Monitoring session state is persisted with `SavedStateHandle` and exposed through `MonitoringSessionRepository` for `BatteryViewModel`.
+This application demonstrates how a smartphone can be used as a lightweight telemetry system for driving behavior analysis.
 
-## How To Run
-1. Open the project in Android Studio.
-2. Ensure an emulator/device with sensors and location support is available.
-3. Build and run:
-   - Android Studio Run, or
-   - `./gradlew assembleDebug` (Windows: `gradlew.bat assembleDebug`).
-4. Grant location permission when prompted for live GPS updates.
+It uses multiple hardware sensors and GPS to:
 
-## Thresholds And Tuning
-All event, motion-state, debounce, and optimization thresholds are centralized in:
+- Display real-time sensor data
+- Detect aggressive driving events
+- Track device motion patterns
+- Evaluate battery consumption during monitoring
+- Apply adaptive battery optimization strategies
 
-- `app/src/main/java/com/okdriver/sensors/domain/ThresholdConfig.kt`
+The system is designed with a **clean layered architecture** and **lifecycle-aware components** to ensure stability and efficiency.
 
-Tune this file to adjust:
-- harsh event sensitivity,
-- debounce/sustain timings,
-- stationary detection windows and hold durations,
-- moving/stationary GPS intervals.
+---
 
-## Battery Optimizations Implemented
-The monitoring pipeline applies real optimizations while monitoring is ON:
+## Key Features
 
-- Stationary detection using:
-  - low speed (`< 3 km/h`) and
-  - low linear-acceleration window activity.
-- Dynamic sensor sampling:
-  - moving: faster sampling (`SENSOR_DELAY_GAME`),
-  - stationary: slower sampling (`SENSOR_DELAY_UI`) and gyroscope disabled.
-- Adaptive GPS update mode:
-  - moving: ~1.5s updates,
-  - stationary: ~12s updates.
-- UI exposes current motion state, sampling mode, GPS interval, and optimization status.
+### 1. Real-Time Sensor Dashboard
 
-## Known Limitations
-- Event detection uses phone-frame heuristics; mounting orientation and road conditions can affect precision.
-- Location quality depends on device hardware, permission, and provider availability.
-- Battery report timer uses in-process coroutine timing (Phase 5/6 scope), not background scheduler persistence.
-- Events are in-memory only (not persisted to disk/Room).
+The dashboard streams live data from device sensors.
+
+Sensors used:
+
+| Sensor | Purpose |
+| --- | --- |
+| Accelerometer | Detect acceleration and braking forces |
+| Gyroscope | Detect rotational motion and sharp turns |
+| Magnetometer | Orientation reference |
+| GPS | Speed and location tracking |
+
+Displayed values:
+
+- Accelerometer (X, Y, Z)
+- Gyroscope (X, Y, Z)
+- Magnetometer (X, Y, Z)
+- GPS Latitude / Longitude
+- Speed
+- Accuracy
+
+All values update in real time while monitoring is active.
+
+---
+
+### 2. Driving Event Detection
+
+The system analyzes motion data to detect unsafe or aggressive driving behavior.
+
+Detected events:
+
+| Event | Detection Logic |
+| --- | --- |
+| Harsh Acceleration | Linear acceleration exceeds threshold |
+| Harsh Braking | Negative acceleration exceeds threshold |
+| Sharp Turn | High gyroscope Z-axis rotation |
+
+Each event records:
+
+- Event type
+- Timestamp
+- Severity score
+- Vehicle speed (if available)
+
+Events are displayed in the **Events screen** using a live-updating list.
+
+---
+
+### 3. Battery Usage Monitoring
+
+When monitoring begins:
+
+1. Initial battery percentage is recorded.
+2. Monitoring runs continuously.
+3. After **30 minutes**, battery percentage is measured again.
+4. Battery drain is calculated.
+
+```text
+Battery Drain = Start Battery % - End Battery %
+```
+
+The result is displayed in the **Battery screen**.
+
+This allows evaluation of power usage during sensor monitoring.
+
+---
+
+## Battery Optimization Strategy
+
+The application includes runtime battery optimizations based on device motion state.
+
+### Motion State Detection
+
+The device motion state is classified as:
+
+```text
+MOVING
+STATIONARY
+```
+
+Motion state is determined using:
+
+- GPS speed
+- Linear acceleration variance
+- Stability duration threshold
+
+---
+
+### Dynamic Sensor Sampling
+
+When the device is **moving**:
+
+| Component | Mode |
+| --- | --- |
+| Sensors | `SENSOR_DELAY_GAME` |
+| Gyroscope | Enabled |
+
+When the device is **stationary**:
+
+| Component | Mode |
+| --- | --- |
+| Sensors | `SENSOR_DELAY_UI` |
+| Gyroscope | Disabled |
+
+Reducing sensor frequency significantly decreases CPU and sensor processing usage.
+
+---
+
+### Adaptive GPS Updates
+
+Location updates adapt based on motion state.
+
+| Motion State | GPS Interval |
+| --- | --- |
+| Moving | ~1.5 seconds |
+| Stationary | ~12 seconds |
+
+This prevents unnecessary GPS usage when the device is not moving.
+
+---
+
+### Additional Power-Saving Techniques
+
+- Sensors only active while monitoring
+- Sensor listeners properly unregistered
+- Location updates dynamically adjusted
+- No continuous polling loops
+- Lifecycle-aware Flow collectors
+
+These measures help reduce battery drain during monitoring.
+
+---
+
+## Architecture
+
+The application follows a **clean layered architecture using MVVM**.
+
+```text
+UI Layer
+Fragments + ViewModels
+  ->
+Domain Layer
+DrivingEventDetector
+MotionStateEvaluator
+ThresholdConfig
+  ->
+Data Layer
+SensorDataSource
+LocationDataSource
+BatteryDataSource
+Repositories
+```
+
+### Technologies Used
+
+- Kotlin
+- Android SDK
+- Coroutines + Flow
+- ViewModel
+- SensorManager
+- FusedLocationProviderClient
+
+---
+
+## Project Structure
+
+```text
+com.okdriver.sensors
+
+data
+|-- sensors
+|-- location
+|-- battery
+|-- events
+`-- monitoring
+
+domain
+|-- DrivingEventDetector
+|-- MotionStateEvaluator
+`-- ThresholdConfig
+
+ui
+|-- dashboard
+|-- events
+`-- battery
+
+util
+`-- helpers
+```
+
+---
+
+## How to Run the Project
+
+### Requirements
+
+- Android Studio (latest version recommended)
+- Minimum SDK: 33+
+
+### Steps
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/TechnoSiva/OkDriver-Sensors.git
+```
+
+2. Open the project in Android Studio.
+3. Build the project:
+
+```bash
+./gradlew assembleDebug
+```
+
+4. Install the APK on a physical Android device.
+
+---
+
+## APK Build Location
+
+After building:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+## Demo Instructions
+
+1. Launch the application.
+2. Tap **Start Monitoring**.
+3. Observe live sensor and GPS data on the dashboard.
+4. Move or shake the phone to generate events.
+5. Open the **Events** screen to see detected driving events.
+6. Leave the device stationary to trigger battery optimization mode.
+7. Open the **Battery** screen to view monitoring status and battery report.
+
+---
+
+## Author
+
+**K Sivaram Achary**  
+Android Kotlin Developer Assignment - OkDriver
