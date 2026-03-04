@@ -1,0 +1,28 @@
+package com.okdriver.sensors.domain
+
+object ThresholdConfig {
+    const val HARSH_ACCEL_THRESHOLD_MS2 = 3.0f
+    const val HARSH_BRAKE_THRESHOLD_MS2 = -3.5f
+    const val SHARP_TURN_GYRO_Z_THRESHOLD_RAD_S = 2.0f
+    const val GRAVITY_ALPHA = 0.8f
+    const val EVENT_DEBOUNCE_MS = 4_000L
+    const val SUSTAIN_DURATION_MS = 200L
+    const val MAX_SEVERITY = 5.0f
+    const val MAX_EVENTS = 200
+
+    const val STATIONARY_SPEED_THRESHOLD_KMH = 3.0f
+    const val MOVING_SPEED_THRESHOLD_KMH = 5.0f
+    const val STATIONARY_WINDOW_MS = 5_000L
+    const val STATIONARY_HOLD_MS = 8_000L
+    const val MOVING_HOLD_MS = 2_000L
+    const val MIN_WINDOW_SAMPLE_COUNT = 12
+    const val STATIONARY_LINEAR_ACCEL_MEAN_THRESHOLD_MS2 = 0.8f
+    const val STATIONARY_LINEAR_ACCEL_VARIANCE_THRESHOLD = 0.35f
+    const val MOVING_LINEAR_ACCEL_MEAN_THRESHOLD_MS2 = 1.3f
+    const val MOVING_LINEAR_ACCEL_VARIANCE_THRESHOLD = 0.8f
+
+    const val GPS_UPDATE_INTERVAL_MOVING_MS = 1_500L
+    const val GPS_FASTEST_INTERVAL_MOVING_MS = 1_000L
+    const val GPS_UPDATE_INTERVAL_STATIONARY_MS = 12_000L
+    const val GPS_FASTEST_INTERVAL_STATIONARY_MS = 8_000L
+}
